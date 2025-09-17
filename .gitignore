@@ -5,3 +5,8 @@ hadoop_datanode1/*
 # spark-events
 spark-events/*
 
+# big files
+*.tar 
+*.tar.gz 
+*.zip
+
