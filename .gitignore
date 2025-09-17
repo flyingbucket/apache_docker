@@ -1,9 +1,11 @@
 # hadoop data 
 hadoop_namenode/*
 hadoop_datanode1/*
+tmp*
 
-# spark-events
+# spark
 spark-events/*
+spark-apps/*
 
 # big files
 *.tar 
