@@ -121,6 +121,8 @@ services:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./spark-apps:/opt/spark-apps # 你放 Spark 脚本的目录
       - ./spark-events:/tmp/spark-events
+    ports:
+      - "4040:4040" # Spark Application Web UI
     environment:
       - SPARK_MASTER_HOST=spark
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
@@ -130,6 +132,56 @@ services:
     command:
       ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.SparkSubmit"]
 
+  spark-client:
+    image: apache/spark:4.0.1
+    container_name: spark-client
+    hostname: spark-client
+    depends_on:
+      - namenode
+      - datanode1
+      - resourcemanager
+      - nodemanager1
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./spark-apps:/opt/spark-apps
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
+      - SPARK_EVENTLOG_ENABLED=true
+      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs # 与历史服一致
+    entrypoint: ["/opt/spark/bin/spark-submit"] # 关键：固定入口为 spark-submit
+    command: ["--help"] # 默认不运行任务，显示帮助（防呆）
+
+  spark-history:
+    image: apache/spark:4.0.1
+    container_name: spark-history
+    hostname: spark-history
+    depends_on:
+      - namenode
+      - datanode1
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop # 仅需这一个挂载
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      # 指向与 spark 应用端一致的 HDFS 事件日志目录
+      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs
+    ports:
+      - "18080:18080" # Spark History UI
+    # command:
+    #   [
+    #     "/bin/bash",
+    #     "-lc",
+    #     "/opt/spark/sbin/start-history-server.sh && tail -f /dev/null",
+    #     start-history-server.sh 脚本会nohup一个日志服务，适用于传统的虚拟机、物理机集群，不适用于docker k8s
+    #   ]
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        exec /opt/spark/bin/spark-class \
+          -Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs \
+          -Dspark.history.fs.update.interval=5s \
+          org.apache.spark.deploy.history.HistoryServer
   init-hdfs:
     image: apache/hadoop:3.4.0
     depends_on:
@@ -139,13 +191,18 @@ services:
         condition: service_started
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
-    entrypoint: ["/bin/bash", "-lc"]
-    command: |
-      until hdfs dfs -ls / >/dev/null 2>&1; do sleep 1; done
-      hdfs dfs -mkdir -p /tmp /user/hadoop /mr-history/tmp /mr-history/done /spark-logs
-      hdfs dfs -chmod 1777 /tmp /mr-history/tmp /mr-history/done
-      hdfs dfs -chmod 755 /user
-      hdfs dfs -chown -R hadoop:supergroup /user/hadoop /spark-logs
+    entrypoint:
+      # 直接把脚本写成一行，交给 bash -lc
+      - /bin/bash
+      - -lc
+      - |
+        set -Eeuo pipefail;
+        until hdfs dfs -ls / >/dev/null 2>&1; do sleep 1; done;
+        hdfs dfs -mkdir -p /tmp /user/hadoop /mr-history/tmp /mr-history/done /spark-logs;
+        hdfs dfs -chmod 1777 /tmp /mr-history/tmp /mr-history/done;
+        hdfs dfs -chmod 755 /user;
+        hdfs dfs -chown -R hadoop:supergroup /user/hadoop /spark-logs;
+        hdfs dfs -ls /
 networks:
   default:
     name: hadoopnet
