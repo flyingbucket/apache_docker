@@ -1,4 +1,22 @@
 services:
+  nn-init:
+    image: apache/hadoop:3.4.0
+    user: "1000:100" # 建议：与目录属主一致
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./hadoop_namenode:/hadoop/dfs/name
+    entrypoint: [
+        "/bin/bash",
+        "-lc",
+        "set -e; set -u; set -o pipefail; \
+        if [ ! -f /hadoop/dfs/name/current/VERSION ]; then \
+        echo '[nn-init] Formatting HDFS NameNode...'; \
+        hdfs namenode -format -force -nonInteractive; \
+        else \
+        echo '[nn-init] NameNode already formatted.'; \
+        fi",
+      ]
+
   namenode:
     image: apache/hadoop:3.4.0
     container_name: namenode
@@ -25,20 +43,19 @@ services:
 
   datanode1:
     image: apache/hadoop:3.4.0
-    container_name: datanode1
-    hostname: datanode1
     depends_on:
       namenode:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "-lc", "exec hdfs datanode"]
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./hadoop_datanode1:/hadoop/dfs/data
     ports:
-      - "9864:9864" # DN WebUI
+      - "9864:9864"
     ulimits:
       nofile: 65536
       nproc: 4096
+    entrypoint: ["/bin/bash", "-lc"]
+    command: ["exec hdfs datanode"]
 
   resourcemanager:
     image: apache/hadoop:3.4.0
@@ -100,8 +117,6 @@ services:
       - datanode1
       - resourcemanager
       - nodemanager1
-    # networks:
-    #   - hadoopnet
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./spark-apps:/opt/spark-apps # 你放 Spark 脚本的目录
@@ -115,6 +130,22 @@ services:
     command:
       ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.SparkSubmit"]
 
+  init-hdfs:
+    image: apache/hadoop:3.4.0
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode1:
+        condition: service_started
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+    entrypoint: ["/bin/bash", "-lc"]
+    command: |
+      until hdfs dfs -ls / >/dev/null 2>&1; do sleep 1; done
+      hdfs dfs -mkdir -p /tmp /user/hadoop /mr-history/tmp /mr-history/done /spark-logs
+      hdfs dfs -chmod 1777 /tmp /mr-history/tmp /mr-history/done
+      hdfs dfs -chmod 755 /user
+      hdfs dfs -chown -R hadoop:supergroup /user/hadoop /spark-logs
 networks:
   default:
     name: hadoopnet
