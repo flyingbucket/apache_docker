@@ -1,0 +1,7 @@
+# hadoop data 
+hadoop_namenode/*
+hadoop_datanode1/*
+
+# spark-events
+spark-events/*
+
