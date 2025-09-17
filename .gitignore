@@ -1,11 +1,16 @@
 # hadoop data 
 hadoop_namenode/*
+!hadoop_namenode/.gitkeep
+
 hadoop_datanode1/*
-tmp*
+!hadoop_datanode1/.gitkeep
+
+tmp/hadoop-history/*
+!tmp/hadoop-history/.gitkeep
 
 # spark
 spark-events/*
-spark-apps/*
+!spark-events/.gitkeep
 
 # big files
 *.tar 
