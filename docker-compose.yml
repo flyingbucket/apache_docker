@@ -1,0 +1,120 @@
+services:
+  namenode:
+    image: apache/hadoop:3.4.0
+    container_name: namenode
+    hostname: namenode
+    entrypoint: ["/bin/bash", "-lc", "exec hdfs namenode"]
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./hadoop_namenode:/hadoop/dfs/name
+    ports:
+      - "9870:9870" # NN WebUI
+      - "9000:9000" # HDFS RPC
+    ulimits:
+      nofile: 65536
+      nproc: 4096
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:9870/jmx | head -n1 >/dev/null",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  datanode1:
+    image: apache/hadoop:3.4.0
+    container_name: datanode1
+    hostname: datanode1
+    depends_on:
+      namenode:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-lc", "exec hdfs datanode"]
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./hadoop_datanode1:/hadoop/dfs/data
+    ports:
+      - "9864:9864" # DN WebUI
+    ulimits:
+      nofile: 65536
+      nproc: 4096
+
+  resourcemanager:
+    image: apache/hadoop:3.4.0
+    container_name: resourcemanager
+    hostname: resourcemanager
+    depends_on:
+      namenode:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-lc", "exec yarn resourcemanager"]
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+    ports:
+      - "8088:8088" # YARN RM WebUI
+    ulimits:
+      nofile: 65536
+      nproc: 4096
+
+  nodemanager1:
+    image: apache/hadoop:3.4.0
+    container_name: nodemanager1
+    hostname: nodemanager1
+    depends_on:
+      resourcemanager:
+        condition: service_started
+    entrypoint: ["/bin/bash", "-lc", "exec yarn nodemanager"]
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+    ports:
+      - "8042:8042" # NM WebUI
+    ulimits:
+      nofile: 65536
+      nproc: 4096
+
+  historyserver:
+    image: apache/hadoop:3.4.0
+    container_name: historyserver
+    hostname: historyserver
+    depends_on:
+      resourcemanager:
+        condition: service_started
+      namenode:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-lc", "exec mapred historyserver"]
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./tmp/hadoop-history:/tmp/hadoop-yarn/staging
+    ports:
+      - "19888:19888" # MR JobHistory WebUI
+    ulimits:
+      nofile: 65536
+      nproc: 4096
+
+  spark:
+    image: apache/spark:4.0.1
+    container_name: spark
+    hostname: spark
+    depends_on:
+      - namenode
+      - datanode1
+      - resourcemanager
+      - nodemanager1
+    # networks:
+    #   - hadoopnet
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./spark-apps:/opt/spark-apps # 你放 Spark 脚本的目录
+      - ./spark-events:/tmp/spark-events
+    environment:
+      - SPARK_MASTER_HOST=spark
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
+      - SPARK_EVENTLOG_ENABLED=true
+      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
+    command:
+      ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.SparkSubmit"]
+
+networks:
+  default:
+    name: hadoopnet
