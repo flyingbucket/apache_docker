@@ -22,13 +22,14 @@ services:
     container_name: namenode
     mem_limit: 1g
     hostname: namenode
+
     environment:
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
       - HADOOP_NAMENODE_OPTS=-Xms512m -Xmx1024m
     entrypoint: ["/bin/bash", "-lc", "exec hdfs namenode"]
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./hadoop_namenode:/hadoop/dfs/name
+      - ./bashrc_namenode:/opt/hadoop/.bashrc
     ports:
       - "9870:9870" # NN WebUI
       - "9000:9000" # HDFS RPC
@@ -45,6 +46,32 @@ services:
       timeout: 3s
       retries: 12
 
+  secondarynamenode:
+    image: apache/hadoop:3.4.0
+    depends_on:
+      namenode:
+        condition: service_healthy
+    hostname: secondarynamenode
+    mem_limit: 1g
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./hadoop_snn:/hadoop/dfs/namesecondary
+
+    environment:
+      - HADOOP_NAMENODE_OPTS=-Xms512m -Xmx1024m
+      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
+      # 先禁用 Hadoop 本地库，验证稳定性（确认无关后再删掉）
+      - HADOOP_OPTS=-Dorg.apache.hadoop.util.NativeCodeLoader.disable=true
+      # 降低 glibc arena，防止小内存容器碎片化（可留可删）
+      - MALLOC_ARENA_MAX=2
+    entrypoint:
+      ["/bin/bash", "-lc", "ulimit -n 65536; exec hdfs secondarynamenode"]
+    ports:
+      - "9868:9868"
+    ulimits:
+      nofile: 65536
+      nproc: 4096
+
   datanode1:
     image: apache/hadoop:3.4.0
     mem_limit: 1g
@@ -55,7 +82,7 @@ services:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./hadoop_datanode1:/hadoop/dfs/data
     environment:
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
+      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     ports:
       - "9864:9864"
     ulimits:
@@ -70,7 +97,7 @@ services:
     container_name: resourcemanager
     hostname: resourcemanager
     environment:
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
+      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     depends_on:
       namenode:
         condition: service_healthy
@@ -89,7 +116,7 @@ services:
     container_name: nodemanager1
     hostname: nodemanager1
     environment:
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
+      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     depends_on:
       resourcemanager:
         condition: service_started
@@ -108,7 +135,7 @@ services:
     container_name: historyserver
     hostname: historyserver
     environment:
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
+      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     depends_on:
       resourcemanager:
         condition: service_started
@@ -124,31 +151,31 @@ services:
       nofile: 65536
       nproc: 4096
 
-  spark:
-    image: apache/spark:4.0.1
-    mem_limit: 1g
-    container_name: spark
-    hostname: spark
-    depends_on:
-      - namenode
-      - datanode1
-      - resourcemanager
-      - nodemanager1
-    volumes:
-      - ./conf:/opt/hadoop/etc/hadoop
-      - ./spark-apps:/opt/spark-apps # 你放 Spark 脚本的目录
-      - ./spark-events:/tmp/spark-events
-    ports:
-      - "4040:4040" # Spark Application Web UI
-    environment:
-      - SPARK_MASTER_HOST=spark
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
-      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
-      - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
-      - SPARK_EVENTLOG_ENABLED=true
-      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
-    command:
-      ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.SparkSubmit"]
+  # spark:
+  #   image: apache/spark:4.0.1
+  #   mem_limit: 1g
+  #   container_name: spark
+  #   hostname: spark
+  #   depends_on:
+  #     - namenode
+  #     - datanode1
+  #     - resourcemanager
+  #     - nodemanager1
+  #   volumes:
+  #     - ./conf:/opt/hadoop/etc/hadoop
+  #     - ./spark-apps:/opt/spark-apps # 你放 Spark 脚本的目录
+  #     - ./spark-events:/tmp/spark-events
+  #   ports:
+  #     - "4040:4040" # Spark Application Web UI
+  #   environment:
+  #     - SPARK_MASTER_HOST=spark
+  #     - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
+  #     - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+  #     - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
+  #     - SPARK_EVENTLOG_ENABLED=true
+  #     - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
+  #   command:
+  #     ["/opt/spark/bin/spark-class", "org.apache.spark.deploy.SparkSubmit"]
 
   spark-client:
     image: apache/spark:4.0.1
@@ -165,7 +192,6 @@ services:
       - ./spark-apps:/opt/spark-apps
     environment:
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
       - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
       - SPARK_EVENTLOG_ENABLED=true
       - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs # 与历史服一致
@@ -184,7 +210,6 @@ services:
       - ./conf:/opt/hadoop/etc/hadoop # 仅需这一个挂载
     environment:
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
-      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
       # 指向与 spark 应用端一致的 HDFS 事件日志目录
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs
     ports:
