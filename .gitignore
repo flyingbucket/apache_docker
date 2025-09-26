@@ -2,6 +2,9 @@
 hadoop_namenode/*
 !hadoop_namenode/.gitkeep
 
+hadoop_ssn/*
+!hadoop_ssn/,gitkeep
+
 hadoop_datanode1/*
 !hadoop_datanode1/.gitkeep
 
