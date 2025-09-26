@@ -12,4 +12,17 @@
     <name>dfs.datanode.data.dir</name>
     <value>file:///hadoop/dfs/data</value>
   </property>
+
+  <property>
+    <name>dfs.namenode.checkpoint.dir</name>
+    <value>file:/hadoop/dfs/namesecondary</value>
+  </property>
+  <property>
+    <name>dfs.namenode.checkpoint.period</name>
+    <value>3600</value>
+  </property>
+  <property>
+    <name>dfs.namenode.checkpoint.txns</name>
+    <value>1000000</value>
+  </property>
 </configuration>
