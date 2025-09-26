@@ -20,7 +20,11 @@ services:
   namenode:
     image: apache/hadoop:3.4.0
     container_name: namenode
+    mem_limit: 1g
     hostname: namenode
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
+      - HADOOP_NAMENODE_OPTS=-Xms512m -Xmx1024m
     entrypoint: ["/bin/bash", "-lc", "exec hdfs namenode"]
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
@@ -43,12 +47,15 @@ services:
 
   datanode1:
     image: apache/hadoop:3.4.0
+    mem_limit: 1g
     depends_on:
       namenode:
         condition: service_healthy
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./hadoop_datanode1:/hadoop/dfs/data
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
     ports:
       - "9864:9864"
     ulimits:
@@ -59,8 +66,11 @@ services:
 
   resourcemanager:
     image: apache/hadoop:3.4.0
+    mem_limit: 1g
     container_name: resourcemanager
     hostname: resourcemanager
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
     depends_on:
       namenode:
         condition: service_healthy
@@ -75,8 +85,11 @@ services:
 
   nodemanager1:
     image: apache/hadoop:3.4.0
+    mem_limit: 1g
     container_name: nodemanager1
     hostname: nodemanager1
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
     depends_on:
       resourcemanager:
         condition: service_started
@@ -91,8 +104,11 @@ services:
 
   historyserver:
     image: apache/hadoop:3.4.0
+    mem_limit: 1g
     container_name: historyserver
     hostname: historyserver
+    environment:
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
     depends_on:
       resourcemanager:
         condition: service_started
@@ -110,6 +126,7 @@ services:
 
   spark:
     image: apache/spark:4.0.1
+    mem_limit: 1g
     container_name: spark
     hostname: spark
     depends_on:
@@ -125,6 +142,7 @@ services:
       - "4040:4040" # Spark Application Web UI
     environment:
       - SPARK_MASTER_HOST=spark
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
       - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
       - SPARK_EVENTLOG_ENABLED=true
@@ -134,6 +152,7 @@ services:
 
   spark-client:
     image: apache/spark:4.0.1
+    mem_limit: 1g
     container_name: spark-client
     hostname: spark-client
     depends_on:
@@ -146,6 +165,7 @@ services:
       - ./spark-apps:/opt/spark-apps
     environment:
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
       - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
       - SPARK_EVENTLOG_ENABLED=true
       - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs # 与历史服一致
@@ -154,6 +174,7 @@ services:
 
   spark-history:
     image: apache/spark:4.0.1
+    mem_limit: 1g
     container_name: spark-history
     hostname: spark-history
     depends_on:
@@ -163,17 +184,11 @@ services:
       - ./conf:/opt/hadoop/etc/hadoop # 仅需这一个挂载
     environment:
       - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - JAVA_TOOL_OPTIONS=-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2
       # 指向与 spark 应用端一致的 HDFS 事件日志目录
       - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs
     ports:
       - "18080:18080" # Spark History UI
-    # command:
-    #   [
-    #     "/bin/bash",
-    #     "-lc",
-    #     "/opt/spark/sbin/start-history-server.sh && tail -f /dev/null",
-    #     start-history-server.sh 脚本会nohup一个日志服务，适用于传统的虚拟机、物理机集群，不适用于docker k8s
-    #   ]
     command:
       - /bin/bash
       - -lc
