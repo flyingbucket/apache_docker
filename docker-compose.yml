@@ -59,7 +59,6 @@ services:
 
     environment:
       - HADOOP_NAMENODE_OPTS=-Xms512m -Xmx1024m
-      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
       # 先禁用 Hadoop 本地库，验证稳定性（确认无关后再删掉）
       - HADOOP_OPTS=-Dorg.apache.hadoop.util.NativeCodeLoader.disable=true
       # 降低 glibc arena，防止小内存容器碎片化（可留可删）
@@ -81,8 +80,6 @@ services:
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./hadoop_datanode1:/hadoop/dfs/data
-    environment:
-      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     ports:
       - "9864:9864"
     ulimits:
@@ -96,8 +93,6 @@ services:
     mem_limit: 1g
     container_name: resourcemanager
     hostname: resourcemanager
-    environment:
-      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     depends_on:
       namenode:
         condition: service_healthy
@@ -115,8 +110,6 @@ services:
     mem_limit: 1g
     container_name: nodemanager1
     hostname: nodemanager1
-    environment:
-      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     depends_on:
       resourcemanager:
         condition: service_started
@@ -134,8 +127,6 @@ services:
     mem_limit: 1g
     container_name: historyserver
     hostname: historyserver
-    environment:
-      - JAVA_TOOL_OPTIONS=-XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=55
     depends_on:
       resourcemanager:
         condition: service_started
