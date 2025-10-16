@@ -1,0 +1,52 @@
+services:
+  spark-client:
+    image: apache/spark:4.0.1
+    mem_limit: 1g
+    container_name: spark-client
+    hostname: spark-client
+    # depends_on:
+    #   - namenode
+    #   - datanode1
+    #   - resourcemanager
+    #   - nodemanager1
+    volumes:
+      # - ../hadoop/conf:/opt/hadoop/etc/hadoop:ro
+      - ./conf:/opt/hadoop/etc/hadoop
+      - ./spark-apps:/opt/spark-apps
+      - ./bashrc_namenode:/etc/profile.d/bashrc_namenode.sh
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - YARN_CONF_DIR=/opt/hadoop/etc/hadoop
+      - SPARK_EVENTLOG_ENABLED=true
+      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs # 与历史服一致
+    # entrypoint: ["/opt/spark/bin/spark-submit"] # 关键：固定入口为 spark-submit
+    # command: ["--help"] # 默认不运行任务，显示帮助（防呆）
+    command: ["/bin/bash", "-lc", "tail -f /dev/null"]
+  spark-history:
+    image: apache/spark:4.0.1
+    mem_limit: 1g
+    container_name: spark-history
+    hostname: spark-history
+    # depends_on:
+    #   - namenode
+    #   - datanode1
+    volumes:
+      - ./conf:/opt/hadoop/etc/hadoop # 仅需这一个挂载
+    environment:
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      # 指向与 spark 应用端一致的 HDFS 事件日志目录
+      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs
+    ports:
+      - "18080:18080" # Spark History UI
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        exec /opt/spark/bin/spark-class \
+          -Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs \
+          -Dspark.history.fs.update.interval=5s \
+          org.apache.spark.deploy.history.HistoryServer
+networks:
+  default:
+    external: true
+    name: hadoopnet
