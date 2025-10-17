@@ -1,6 +1,6 @@
 services:
   namenode:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     container_name: namenode
     mem_limit: 1g
     hostname: namenode
@@ -30,7 +30,7 @@ services:
       retries: 12
 
   secondarynamenode:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     depends_on:
       namenode:
         condition: service_healthy
@@ -55,7 +55,7 @@ services:
       nproc: 4096
 
   datanode1:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     mem_limit: 1g
     depends_on:
       namenode:
@@ -72,7 +72,7 @@ services:
     command: ["exec hdfs datanode"]
 
   resourcemanager:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     mem_limit: 1g
     container_name: resourcemanager
     hostname: resourcemanager
@@ -89,7 +89,7 @@ services:
       nproc: 4096
 
   nodemanager1:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     mem_limit: 1g
     container_name: nodemanager1
     hostname: nodemanager1
@@ -106,7 +106,7 @@ services:
       nproc: 4096
 
   historyserver:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     mem_limit: 1g
     container_name: historyserver
     hostname: historyserver
@@ -126,7 +126,7 @@ services:
       nproc: 4096
 
   nn-init:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     user: "1000:100" # 建议：与目录属主一致
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
@@ -143,7 +143,7 @@ services:
         fi",
       ]
   init-hdfs:
-    image: apache/hadoop:3.4.0
+    image: flyingbucket/hadoop:3.4.1
     depends_on:
       namenode:
         condition: service_healthy
@@ -152,32 +152,7 @@ services:
     volumes:
       - ./conf:/opt/hadoop/etc/hadoop
       - ./scripts/init-hdfs.sh:/usr/local/bin/init-hdfs.sh:ro
-    # environment:
-    # 如需覆盖默认：HDFS_SPARK_USER/HDFS_SPARK_GROUP/HDFS_SPARK_LOG_DIR 等
-    # HDFS_SPARK_USER: "spark"
-    # SPARK_LOG_DIR_POLICY: "chown"   # 或 "public"
     entrypoint: ["/bin/bash", "-lc", "/usr/local/bin/init-hdfs.sh"]
-  # init-hdfs:
-  #   image: apache/hadoop:3.4.0
-  #   depends_on:
-  #     namenode:
-  #       condition: service_healthy
-  #     datanode1:
-  #       condition: service_started
-  #   volumes:
-  #     - ./conf:/opt/hadoop/etc/hadoop
-  #   entrypoint:
-  #     # 直接把脚本写成一行，交给 bash -lc
-  #     - /bin/bash
-  #     - -lc
-  #     - |
-  #       set -Eeuo pipefail;
-  #       until hdfs dfs -ls / >/dev/null 2>&1; do sleep 1; done;
-  #       hdfs dfs -mkdir -p /tmp /user/hadoop /mr-history/tmp /mr-history/done /spark-logs;
-  #       hdfs dfs -chmod 1777 /tmp /mr-history/tmp /mr-history/done;
-  #       hdfs dfs -chmod 755 /user;
-  #       hdfs dfs -chown -R hadoop:supergroup /user/hadoop /spark-logs;
-  #       hdfs dfs -ls /
 networks:
   default:
     external: true
