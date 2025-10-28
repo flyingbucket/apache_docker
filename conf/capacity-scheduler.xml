@@ -3,13 +3,13 @@
   <!-- 根队列只有一个子队列 default -->
   <property>
     <name>yarn.scheduler.capacity.root.queues</name>
-    <value>default</value>
+    <value>default,small</value>
   </property>
 
   <!-- default 队列容量 -->
   <property>
     <name>yarn.scheduler.capacity.root.default.capacity</name>
-    <value>100</value>
+    <value>70</value>
   </property>
   <property>
     <name>yarn.scheduler.capacity.root.default.maximum-capacity</name>
@@ -17,6 +17,19 @@
   </property>
   <property>
     <name>yarn.scheduler.capacity.root.default.state</name>
+    <value>RUNNING</value>
+  </property>
+  <!--small队列容量-->
+  <property>
+    <name>yarn.scheduler.capacity.root.small.capacity</name>
+    <value>30</value>
+  </property>
+  <property>
+    <name>yarn.scheduler.capacity.root.small.maximum-capacity</name>
+    <value>40</value>
+  </property>
+  <property>
+    <name>yarn.scheduler.capacity.root.small.state</name>
     <value>RUNNING</value>
   </property>
 
@@ -45,6 +58,14 @@
   </property>
   <property>
     <name>yarn.scheduler.capacity.root.default.acl_administer_queue</name>
+    <value>*</value>
+  </property>
+  <property>
+    <name>yarn.scheduler.capacity.root.small.acl_submit_applications</name>
+    <value>*</value>
+  </property>
+  <property>
+    <name>yarn.scheduler.capacity.root.small.acl_administer_queue</name>
     <value>*</value>
   </property>
 </configuration>

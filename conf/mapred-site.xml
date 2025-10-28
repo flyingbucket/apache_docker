@@ -25,4 +25,12 @@
       /opt/hadoop/share/hadoop/yarn/lib/*
     </value>
   </property>
+  <property>
+    <name>yarn.app.mapreduce.am.resource.mb</name>
+    <value>1024</value>
+  </property>
+  <property>
+    <name>yarn.app.mapreduce.am.command-opts</name>
+    <value>-Xmx768m</value>
+  </property>
 </configuration>
