@@ -1,0 +1,26 @@
+FROM apache/hadoop-runner:jdk17-u2204
+LABEL maintainer="flyingbucket 2311067@mail.nankai.edu.cn"
+
+# ARG HADOOP_VERSION=3.4.1
+# ARG SPARK_VERSION=4.0.1 
+
+USER root 
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl tini bash procps net-tools \
+  && rm -rf /var/lib/apt/lists/*
+
+ADD ./hadoop-3.4.1.tar.gz /opt/ 
+ADD ./spark-4.0.1-bin-hadoop3.tgz /opt/ 
+
+RUN ln -sf /opt/hadoop-3.4.1 /opt/hadoop && \
+    ln -sf /opt/spark-4.0.1-bin-hadoop3 /opt/spark
+
+
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
+    HADOOP_HOME=/opt/hadoop \
+    HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop \
+    YARN_CONF_DIR=/opt/hadoop/etc/hadoop \
+    SPARK_HOME=/opt/spark \
+    SPARK_CONF_DIR=/opt/spark/conf \
+    PATH=$PATH:/opt/hadoop/bin:/opt/hadoop/sbin:/opt/spark/bin:/opt/spark/sbin

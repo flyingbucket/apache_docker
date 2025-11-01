@@ -1,0 +1,6 @@
+**
+
+!Dockerfile.hadoop_spark
+!Dockerfile.hadoop_only
+!hadoop-3.4.1.tar.gz
+!spark-4.0.1-bin-hadoop3.tgz
