@@ -17,6 +17,7 @@ spark-events/*
 
 # big files
 *.tar 
+*.tgz
 *.tar.gz 
 *.zip
 
