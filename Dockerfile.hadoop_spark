@@ -13,14 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ADD ./hadoop-3.4.1.tar.gz /opt/ 
 ADD ./spark-4.0.1-bin-hadoop3.tgz /opt/ 
 
-RUN ln -sf /opt/hadoop-3.4.1 /opt/hadoop && \
-    ln -sf /opt/spark-4.0.1-bin-hadoop3 /opt/spark
+ENV JAVA_HOME=/opt/java/openjdk \
+    HADOOP_HOME=/opt/hadoop-3.4.1 \
+    HADOOP_CONF_DIR=/opt/hadoop-3.4.1/etc/hadoop \
+    YARN_CONF_DIR=/opt/hadoop-3.4.1/etc/hadoop \
+    SPARK_HOME=/opt/spark-4.0.1-bin-hadoop3 \
+    SPARK_CONF_DIR=/opt/spark-4.0.1-bin-hadoop3/conf
 
-
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
-    HADOOP_HOME=/opt/hadoop \
-    HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop \
-    YARN_CONF_DIR=/opt/hadoop/etc/hadoop \
-    SPARK_HOME=/opt/spark \
-    SPARK_CONF_DIR=/opt/spark/conf \
-    PATH=$PATH:/opt/hadoop/bin:/opt/hadoop/sbin:/opt/spark/bin:/opt/spark/sbin
+ENV PATH="${PATH}:${HADOOP_HOME}/bin:${HADOOP_HOME}/sbin:${SPARK_HOME}/bin:${SPARK_HOME}/sbin"
