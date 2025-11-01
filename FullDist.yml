@@ -1,23 +1,23 @@
 services:
   master:
-    image: flyingbucket/hadoop_spark:0.0.1
-    mem_limit: 3g
+    image: flyingbucket/hadoop_spark:0.0.2
     container_name: master
     hostname: master
     volumes:
       - ./full_dist_conf:/opt/hadoop/etc/hadoop
-      - ./full_dist_data/namenode:/hadoop/dfs/name:Z
+      - ./full_dist_data/namenode:/hadoop/dfs/name
       - ./scripts:/scripts:ro
-
     ports:
       - "9870:9870" # NN WebUI
       - "9000:9000" # HDFS RPC
       - "8088:8088" # YARN RM WebUI
+      - "7077:7077" # Spark Master RPC
+      - "8080:8080" # Spark Master WebUI
     environment:
       - HADOOP_ROOT_LOGGER=INFO,console
       - SPARK_EVENTLOG_ENABLED=true
       - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
-    entrypoint: ["/scripts/master_ep.sh"]
+    entrypoint: ["tini", "--", "/scripts/master_ep.sh"]
     ulimits:
       nofile: 65536
       nproc: 4096
@@ -25,45 +25,61 @@ services:
       test:
         ["CMD-SHELL", "curl -fsS http://localhost:9870/ | head -n1 >/dev/null"]
       interval: 10s
-      timeout: 3s
-      retries: 15
+      timeout: 5s
+      retries: 30
 
   worker1:
-    image: flyingbucket/hadoop_spark:0.0.1
-    mem_limit: 2g
+    image: flyingbucket/hadoop_spark:0.0.2
+    container_name: worker1
+    hostname: worker1
+    depends_on:
+      master:
+        condition: service_healthy
+    volumes:
+      - ./full_dist_conf:/opt/hadoop/etc/hadoop
+      - ./full_dist_data/datanode1:/hadoop/dfs/data
+      - ./scripts:/scripts:ro
+    ports:
+      - "9864:9864" # DN WebUI
+      - "8042:8042" # NM WebUI
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    entrypoint: ["tini", "--", "/scripts/worker_ep.sh"]
+
+  worker2:
+    image: flyingbucket/hadoop_spark:0.0.2
+    container_name: worker2
+    hostname: worker2
+    depends_on:
+      master:
+        condition: service_healthy
+    volumes:
+      - ./full_dist_conf:/opt/hadoop/etc/hadoop
+      - ./full_dist_data/datanode2:/hadoop/dfs/data
+      - ./scripts:/scripts:ro
+    environment:
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    entrypoint: ["tini", "--", "/scripts/worker_ep.sh"]
+
+  spark-history:
+    image: flyingbucket/hadoop_spark:0.0.2
     container_name: spark-history
     hostname: spark-history
     depends_on:
-      - master
+      master:
+        condition: service_healthy
     volumes:
       - ./full_dist_conf:/opt/hadoop/etc/hadoop
-      - ./full_dist_data/datanode:/hadoop/dfs/data
       - ./scripts:/scripts:ro
     ports:
-      - "9864:9864" # datanode
-      - "8042:8042" # NM WebUI
-    entrypoint: ["/scripts/worker_ep.sh"]
+      - "18080:18080" # Spark History WebUI
     environment:
-      - SPARK_HISTORY_OPTS=-Dspark.history.fs.logDirectory=hdfs://namenode:9000/spark-logs
-      - HADOOP_ROOT_LOGGER=INFO,console
+      - SPARK_EVENTLOG_ENABLED=true
+      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
+    entrypoint: ["tini", "--", "/scripts/history_ep.sh"]
 
-  historyserver:
-    image: flyingbucket/hadoop_spark:0.0.1
-    container_name: historyserver
-    hostname: historyserver
-    depends_on:
-      - master
-    mem_limit: 1g
-    volumes:
-      - ./full_dist_conf:/opt/hadoop/etc/hadoop:ro
-      - ./scripts:/scripts:ro
-    entrypoint: ["/scripts/history_ep.sh"]
-    ports:
-      - "19888:19888" # MR JobHistory WebUI
-      # - "10020:10020"  # JobHistory RPC（多用于调试/客户端）
-    environment:
-      - HADOOP_ROOT_LOGGER=INFO,console
 networks:
   default:
-    external: true
     name: FullDistNet
