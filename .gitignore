@@ -15,6 +15,8 @@ tmp/hadoop-history/*
 spark-events/*
 !spark-events/.gitkeep
 
+# full dist data 
+full_dist_data
 # big files
 *.tar 
 *.tgz
