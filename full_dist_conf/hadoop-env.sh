@@ -420,7 +420,6 @@ export HADOOP_OS_TYPE=${HADOOP_OS_TYPE:-$(uname -s)}
 # For example, to limit who can execute the namenode command,
 # export HDFS_NAMENODE_USER=hdfs
 
-
 ###
 # Registry DNS specific parameters
 ###
@@ -432,3 +431,9 @@ export HADOOP_OS_TYPE=${HADOOP_OS_TYPE:-$(uname -s)}
 # By default, Hadoop uses jsvc which needs to know to launch a
 # server jvm.
 # export HADOOP_REGISTRYDNS_SECURE_EXTRA_OPTS="-jvm server"
+
+export HADOOP_OPTS="$HADOOP_OPTS --add-opens=java.base/java.lang=ALL-UNNAMED \
+                                 --add-opens=java.base/java.lang.reflect=ALL-UNNAMED \
+                                 --add-opens=java.base/java.io=ALL-UNNAMED \
+                                 --add-opens=java.base/java.net=ALL-UNNAMED \
+                                 --add-opens=java.base/java.util=ALL-UNNAMED"
