@@ -16,7 +16,7 @@ services:
     environment:
       - HADOOP_ROOT_LOGGER=INFO,console
       - SPARK_EVENTLOG_ENABLED=true
-      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
+      - SPARK_EVENTLOG_DIR=hdfs://master:9000/spark-logs
     entrypoint: ["tini", "--", "/scripts/master_ep.sh"]
     ulimits:
       nofile: 65536
@@ -63,10 +63,10 @@ services:
       - SPARK_WORKER_MEMORY=2g
     entrypoint: ["tini", "--", "/scripts/worker_ep.sh"]
 
-  spark-history:
+  history-server:
     image: flyingbucket/hadoop_spark:0.0.2
-    container_name: spark-history
-    hostname: spark-history
+    container_name: history-server
+    hostname: history-server
     depends_on:
       master:
         condition: service_healthy
@@ -75,9 +75,10 @@ services:
       - ./scripts:/scripts:ro
     ports:
       - "18080:18080" # Spark History WebUI
+      - "19888:19888" # mapred jobhistory webapp
     environment:
       - SPARK_EVENTLOG_ENABLED=true
-      - SPARK_EVENTLOG_DIR=hdfs://namenode:9000/spark-logs
+      - SPARK_EVENTLOG_DIR=hdfs://master:9000/spark-logs
     entrypoint: ["tini", "--", "/scripts/history_ep.sh"]
 
 networks:
