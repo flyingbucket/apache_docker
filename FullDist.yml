@@ -4,7 +4,8 @@ services:
     container_name: master
     hostname: master
     volumes:
-      - ./full_dist_conf:/opt/hadoop/etc/hadoop
+      - ./full_dist_conf/hadoop:/opt/hadoop-3.4.1/etc/hadoop
+      - ./full_dist_conf/spark:/opt/spark-4.0.1-bin-hadoop3/conf
       - ./full_dist_data/namenode:/hadoop/dfs/name
       - ./scripts:/scripts:ro
     ports:
@@ -36,7 +37,8 @@ services:
       master:
         condition: service_healthy
     volumes:
-      - ./full_dist_conf:/opt/hadoop/etc/hadoop
+      - ./full_dist_conf/hadoop:/opt/hadoop-3.4.1/etc/hadoop
+      - ./full_dist_conf/spark:/opt/spark-4.0.1-bin-hadoop3/conf
       - ./full_dist_data/datanode1:/hadoop/dfs/data
       - ./scripts:/scripts:ro
     ports:
@@ -55,7 +57,8 @@ services:
       master:
         condition: service_healthy
     volumes:
-      - ./full_dist_conf:/opt/hadoop/etc/hadoop
+      - ./full_dist_conf/hadoop:/opt/hadoop-3.4.1/etc/hadoop
+      - ./full_dist_conf/spark:/opt/spark-4.0.1-bin-hadoop3/conf
       - ./full_dist_data/datanode2:/hadoop/dfs/data
       - ./scripts:/scripts:ro
     environment:
@@ -71,7 +74,8 @@ services:
       master:
         condition: service_healthy
     volumes:
-      - ./full_dist_conf:/opt/hadoop/etc/hadoop
+      - ./full_dist_conf/hadoop:/opt/hadoop-3.4.1/etc/hadoop
+      - ./full_dist_conf/spark:/opt/spark-4.0.1-bin-hadoop3/conf
       - ./scripts:/scripts:ro
     ports:
       - "18080:18080" # Spark History WebUI
@@ -80,6 +84,20 @@ services:
       - SPARK_EVENTLOG_ENABLED=true
       - SPARK_EVENTLOG_DIR=hdfs://master:9000/spark-logs
     entrypoint: ["tini", "--", "/scripts/history_ep.sh"]
+
+  gateway:
+    image: flyingbucket/hadoop_spark:0.0.2
+    container_name: gateway
+    hostname: gateway
+    depends_on:
+      master:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-lc", "sleep infinity"]
+    volumes:
+      - ./full_dist_conf/hadoop:/opt/hadoop-3.4.1/etc/hadoop:ro
+      - ./full_dist_conf/spark:/opt/spark-4.0.1-bin-hadoop3/conf
+      - ./spark-apps/:/work:ro # JARs
+      - ./bashrc_conf.sh:/etc/profile.d/bashrc_color.sh
 
 networks:
   default:

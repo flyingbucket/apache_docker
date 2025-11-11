@@ -23,3 +23,9 @@ full_dist_data
 *.tar.gz 
 *.zip
 
+# scala
+.bsp/
+.metals/
+.scala-build/
+target/
+
